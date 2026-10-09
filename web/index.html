@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PLOT — Leave the screen. Tend the ground.</title>
+    <meta
+      name="description"
+      content="PLOT uses TabPFN on local frost and weather tables to tell you whether to wait, walk, or garden — then gets you outside."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/assets/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="PLOT home">PLOT</a>
+      <nav class="nav">
+        <a href="#check">Check today</a>
+        <a href="#how">How it works</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero" aria-label="Introduction">
+        <div class="hero-media" role="img" aria-label="Sunlit garden path through tall grass"></div>
+        <div class="hero-copy">
+          <p class="brand-mark">PLOT</p>
+          <h1>Leave the screen.<br />Tend the ground.</h1>
+          <p class="lede">
+            One tabular forecast. One outdoor next step. Built on open-weight TabPFN — not a chatbot.
+          </p>
+          <div class="cta-row">
+            <a class="btn primary" href="#check">Check my yard</a>
+            <a class="btn ghost" href="#how">See the method</a>
+          </div>
+        </div>
+      </section>
+
+      <section id="check" class="check">
+        <div class="section-head">
+          <h2>Today’s outdoor signal</h2>
+          <p>Pick a place or enter conditions. TabPFN classifies wait, walk, or garden from frost history.</p>
+        </div>
+
+        <div class="check-layout">
+          <form id="check-form" class="check-form" novalidate>
+            <fieldset class="presets" id="presets">
+              <legend>Quick place</legend>
+              <div class="preset-row" id="preset-buttons"></div>
+            </fieldset>
+
+            <div class="grid-2">
+              <label>
+                Latitude
+                <input id="lat" name="lat" type="number" step="0.01" required value="45.52" />
+              </label>
+              <label>
+                Longitude
+                <input id="lon" name="lon" type="number" step="0.01" required value="-122.68" />
+              </label>
+            </div>
+
+            <div class="grid-3">
+              <label>
+                Avg temp °C
+                <input id="avg_temp_c" name="avg_temp_c" type="number" step="0.1" required value="14" />
+              </label>
+              <label>
+                Min temp °C
+                <input id="min_temp_c" name="min_temp_c" type="number" step="0.1" required value="7" />
+              </label>
+              <label>
+                Rain mm (7d proxy)
+                <input id="precip_mm" name="precip_mm" type="number" step="0.1" value="1.5" />
+              </label>
+            </div>
+
+            <div class="grid-3">
+              <label>
+                Wind km/h
+                <input id="wind_kmh" name="wind_kmh" type="number" step="0.1" value="10" />
+              </label>
+              <label>
+                Soil moisture (0–1)
+                <input id="soil_moisture" name="soil_moisture" type="number" step="0.01" min="0" max="1" value="0.55" />
+              </label>
+              <label>
+                Days since frost
+                <input id="days_since_last_frost" name="days_since_last_frost" type="number" step="1" value="40" />
+              </label>
+            </div>
+
+            <button type="submit" class="btn primary wide" id="submit-btn">Get outdoor signal</button>
+            <p class="engine-line" id="engine-status">Loading model status…</p>
+          </form>
+
+          <aside class="result" id="result" hidden>
+            <p class="result-kicker" id="result-kicker">Signal</p>
+            <h3 id="result-title">—</h3>
+            <p class="result-sub" id="result-sub"></p>
+            <div class="confidence" id="confidence"></div>
+            <ol class="checklist" id="checklist"></ol>
+            <p class="model-note" id="model-note"></p>
+          </aside>
+        </div>
+      </section>
+
+      <section id="how" class="how">
+        <div class="section-head">
+          <h2>How it works</h2>
+          <p>Open tabular intelligence on frost history — then a checklist that ends at the door.</p>
+        </div>
+        <ol class="steps">
+          <li>
+            <span class="num">01</span>
+            <div>
+              <h3>Historical outdoor table</h3>
+              <p>Thousands of day-rows: temperature, frost lag, soil moisture, daylight, wind.</p>
+            </div>
+          </li>
+          <li>
+            <span class="num">02</span>
+            <div>
+              <h3>TabPFN classifies the day</h3>
+              <p>
+                Prior Labs’ open tabular foundation model predicts <em>wait</em>, <em>walk</em>, or
+                <em>garden</em>. No chat layer required.
+              </p>
+            </div>
+          </li>
+          <li>
+            <span class="num">03</span>
+            <div>
+              <h3>You go outside</h3>
+              <p>Three concrete actions. The screen’s job is over in under a minute.</p>
+            </div>
+          </li>
+        </ol>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p><strong>PLOT</strong> — Hacktoberfest Week 1 · Touch Grass · Best Use of TabPFN</p>
+      <p>Open innovation: swap the model, keep the frost table, run without a closed garden API.</p>
+    </footer>
+
+    <script src="/assets/app.js" type="module"></script>
+  </body>
+</html>
