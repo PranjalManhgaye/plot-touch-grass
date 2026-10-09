@@ -45,5 +45,6 @@ Open tabular models fit outdoor logistics better than a general chat API.
 ## Prize Categories
 
 - Best Use of TabPFN
+- Best Use of Render
 - Best Use of Entire *(if agent session embedded)*
 - Best Use of Sentry Agent Tracing *(if traces added)*
