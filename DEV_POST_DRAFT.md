@@ -10,13 +10,15 @@ Who it’s for: people with a yard, balcony, or nearby park who overthink the we
 
 ## Demo
 
-<!-- Add deployed URL or Loom after you record a 45s clip outside -->
+**Live:** https://plot-touch-grass.onrender.com
 
-Local: `http://127.0.0.1:8000` after `uvicorn backend.main:app`
+Local: `PYTHONPATH=. uvicorn backend.main:app` → http://127.0.0.1:8000
+
+<!-- Add a 45s outdoor video/GIF after you use it outside -->
 
 ## Code
 
-<!-- Embed GitHub repo once pushed -->
+https://github.com/PranjalManhgaye/plot-touch-grass
 
 ## How I Built It
 
