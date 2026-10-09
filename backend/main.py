@@ -7,7 +7,7 @@ from datetime import date
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -15,6 +15,8 @@ from pydantic import BaseModel, Field
 
 from backend.checklist import VERDICTS, build_checklist
 from backend.engine import FEATURE_COLS, engine
+from backend.locations import LOCATIONS
+from backend.weather import fetch_today_conditions
 
 ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / ".env")
@@ -47,67 +49,11 @@ class PlacePreset(BaseModel):
     region: str
     lat: float
     lon: float
-    avg_temp_c: float
-    min_temp_c: float
-    precip_mm: float
-    wind_kmh: float
-    soil_moisture: float
-    days_since_last_frost: int
 
 
 PRESETS = [
-    PlacePreset(
-        id="pdx",
-        label="Portland, OR",
-        region="Cool marine",
-        lat=45.52,
-        lon=-122.68,
-        avg_temp_c=14.0,
-        min_temp_c=7.0,
-        precip_mm=1.5,
-        wind_kmh=10,
-        soil_moisture=0.55,
-        days_since_last_frost=40,
-    ),
-    PlacePreset(
-        id="chi",
-        label="Chicago, IL",
-        region="Continental",
-        lat=41.88,
-        lon=-87.63,
-        avg_temp_c=11.0,
-        min_temp_c=4.0,
-        precip_mm=2.0,
-        wind_kmh=16,
-        soil_moisture=0.42,
-        days_since_last_frost=18,
-    ),
-    PlacePreset(
-        id="aus",
-        label="Austin, TX",
-        region="Warm",
-        lat=30.27,
-        lon=-97.74,
-        avg_temp_c=24.0,
-        min_temp_c=17.0,
-        precip_mm=0.5,
-        wind_kmh=12,
-        soil_moisture=0.28,
-        days_since_last_frost=90,
-    ),
-    PlacePreset(
-        id="nyc",
-        label="New York, NY",
-        region="Temperate",
-        lat=40.71,
-        lon=-74.01,
-        avg_temp_c=16.0,
-        min_temp_c=10.0,
-        precip_mm=3.0,
-        wind_kmh=14,
-        soil_moisture=0.48,
-        days_since_last_frost=35,
-    ),
+    PlacePreset(id=loc.id, label=loc.label, region=loc.region, lat=loc.lat, lon=loc.lon)
+    for loc in LOCATIONS
 ]
 
 
@@ -124,13 +70,11 @@ def _daylight_hours(doy: int, lat: float) -> float:
 
 @app.on_event("startup")
 def startup() -> None:
-    # Load in the background so free-tier platforms can bind $PORT quickly.
     threading.Thread(target=engine.load, name="plot-model-load", daemon=True).start()
 
 
 @app.get("/api/healthz")
 def healthz() -> dict:
-    """Liveness probe — always OK once the process is up."""
     return {"ok": True}
 
 
@@ -142,6 +86,18 @@ def health() -> dict:
 @app.get("/api/presets")
 def presets() -> list[PlacePreset]:
     return PRESETS
+
+
+@app.get("/api/weather")
+async def weather(
+    lat: float = Query(..., ge=-90, le=90),
+    lon: float = Query(..., ge=-180, le=180),
+) -> dict:
+    """Today's real conditions from Open-Meteo for the given coordinates."""
+    try:
+        return await fetch_today_conditions(lat, lon)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"Open-Meteo request failed: {exc}") from exc
 
 
 @app.post("/api/check")

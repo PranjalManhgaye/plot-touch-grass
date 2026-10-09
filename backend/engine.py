@@ -33,6 +33,10 @@ FEATURE_COLS = [
 
 LABEL_COL = "action"
 DATA_PATH = Path(__file__).resolve().parent.parent / "data" / "outdoor_history.csv"
+DATA_SOURCE = (
+    "Open-Meteo ERA5 reanalysis (2018–2024), "
+    "12 US cities — labels from documented frost/garden heuristics"
+)
 
 
 @dataclass
@@ -141,6 +145,7 @@ class OutdoorEngine:
             "classes": list(self._label_encoder.classes_) if self.ready else [],
             "error": self.error,
             "tabpfn_token_set": bool(os.getenv("TABPFN_TOKEN", "").strip()),
+            "data_source": DATA_SOURCE,
         }
 
 

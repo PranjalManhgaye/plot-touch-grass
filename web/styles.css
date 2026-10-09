@@ -267,6 +267,36 @@ legend {
   gap: 0.5rem;
 }
 
+.weather-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.btn.compact {
+  min-height: 2.2rem;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.85rem;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+}
+
+.btn.compact:hover {
+  background: var(--mist);
+}
+
+.weather-source {
+  margin: 0.65rem 0 0;
+  font-size: 0.82rem;
+  color: rgba(19, 36, 28, 0.58);
+}
+
+.weather-source.ok {
+  color: var(--moss);
+}
+
 .preset {
   border: 1px solid var(--line);
   background: transparent;

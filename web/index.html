@@ -44,14 +44,19 @@
       <section id="check" class="check">
         <div class="section-head">
           <h2>Today’s outdoor signal</h2>
-          <p>Pick a place or enter conditions. TabPFN classifies wait, walk, or garden from frost history.</p>
+          <p>Pick a city or use your location — we pull <strong>today’s real weather</strong> from Open-Meteo, then TabPFN classifies wait, walk, or garden.</p>
         </div>
 
         <div class="check-layout">
           <form id="check-form" class="check-form" novalidate>
             <fieldset class="presets" id="presets">
-              <legend>Quick place</legend>
+              <legend>Place</legend>
               <div class="preset-row" id="preset-buttons"></div>
+              <div class="weather-actions">
+                <button type="button" class="btn ghost compact" id="geo-btn">Use my location</button>
+                <button type="button" class="btn ghost compact" id="refresh-weather-btn">Refresh live weather</button>
+              </div>
+              <p class="weather-source" id="weather-source">Weather not loaded yet.</p>
             </fieldset>
 
             <div class="grid-2">
@@ -119,8 +124,8 @@
           <li>
             <span class="num">01</span>
             <div>
-              <h3>Historical outdoor table</h3>
-              <p>Thousands of day-rows: temperature, frost lag, soil moisture, daylight, wind.</p>
+              <h3>Real outdoor table</h3>
+              <p>30k+ daily rows from Open-Meteo ERA5: real temps, frost lag, soil moisture, wind — 12 US cities, 2018–2024.</p>
             </div>
           </li>
           <li>

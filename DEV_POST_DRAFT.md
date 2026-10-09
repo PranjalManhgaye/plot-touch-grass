@@ -2,19 +2,17 @@
 
 ## What I Built
 
-**PLOT** tells you whether to **wait**, **walk**, or **garden** today — then gives a three-step checklist that ends at the door.
+**PLOT** answers one question: should you **wait**, **walk**, or **garden** today?
 
-It is not a chatbot. The brain is **TabPFN** (Prior Labs), an open tabular foundation model, fitted on frost and weather history. The UI’s job is short: enter conditions → get a signal → go outside.
+It is not a chatbot. Pick a city or share your location — **Open-Meteo** fills in today's real weather. **TabPFN** (Prior Labs) classifies your day from 30k+ rows of **real ERA5 reanalysis** (2018–2024, 12 US cities). You get three concrete outdoor steps. The screen's job is under a minute.
 
-Who it’s for: people with a yard, balcony, or nearby park who overthink the weather and under-leave the house.
+Who it's for: anyone with a yard, balcony, or nearby park who stares at the weather app instead of going outside.
 
 ## Demo
 
 **Live:** https://plot-touch-grass.onrender.com
 
-Local: `PYTHONPATH=. uvicorn backend.main:app` → http://127.0.0.1:8000
-
-<!-- Add a 45s outdoor video/GIF after you use it outside -->
+<!-- Add 45s video: pick city → live weather loads → garden signal → you outside -->
 
 ## Code
 
@@ -22,21 +20,24 @@ https://github.com/PranjalManhgaye/plot-touch-grass
 
 ## How I Built It
 
-1. Built a historical outdoor table (`data/outdoor_history.csv`) with frost lag, temps, rain, wind, daylight, soil moisture.
-2. Fitted **TabPFNClassifier** (`tabpfn-client`) when `TABPFN_TOKEN` is set; transparently falls back to a labeled sklearn baseline only for local UI testing — never claimed as TabPFN.
-3. Mapped the predicted class to a concrete outdoor checklist (screen stays under a minute).
-4. Shipped a single-purpose FastAPI + static UI — brand first, one CTA, no chat chrome.
+1. **Real training data** — `scripts/fetch_real_data.py` pulls daily ERA5 weather from Open-Meteo for Portland, Seattle, Chicago, Minneapolis, Denver, NYC, Boston, Atlanta, Austin, Phoenix, Miami, LA (2018–2024). ~30,684 rows. No synthetic temperatures.
+2. **Frost features** — `days_since_last_frost` computed from actual daily min temps crossing 0 °C. Soil moisture from Open-Meteo hourly probes.
+3. **Labels** — horticulture-inspired heuristics in `backend/labels.py` (frost window, precip, wind). Honest and documented — TabPFN learns the table, not prose.
+4. **TabPFN** — `tabpfn-client` fits on real rows; predicts wait/walk/garden with class probabilities.
+5. **Live weather** — `/api/weather` uses Open-Meteo forecast + 120-day archive. UI: city presets, geolocation, refresh.
+6. **Deployed** on Render with a clean static UI — brand first, one CTA.
 
 ## Why Does Open Innovation Matter?
 
-Frost and “should I plant?” are **tabular** problems. A closed garden API would lock location and weather to a vendor. TabPFN lets me:
+Frost and planting decisions are **tabular**. A closed garden API would lock your coordinates and history to a vendor.
 
-- Keep the frost table and inference path under my control
-- Swap models without rewriting the product
-- Run a meaningful demo without paying per chat token
-- Explain the decision as class probabilities over real features — not opaque prose
+Open stack wins here:
 
-Open tabular models fit outdoor logistics better than a general chat API.
+- **Open-Meteo** — free ERA5 data, no key, works on the trail with cached tables
+- **TabPFN** — swap models, explain decisions as probabilities over real features
+- **Your data stays yours** — we don't store location; weather is fetched per request
+
+Closed chat APIs can't beat a tabular foundation model on structured frost history — and they shouldn't pretend to.
 
 ## My Agent Session
 
@@ -46,5 +47,3 @@ Open tabular models fit outdoor logistics better than a general chat API.
 
 - Best Use of TabPFN
 - Best Use of Render
-- Best Use of Entire *(if agent session embedded)*
-- Best Use of Sentry Agent Tracing *(if traces added)*
