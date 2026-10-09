@@ -2,33 +2,43 @@
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+import time
+from datetime import date
 from typing import Any
 
 import httpx
 
 from backend.labels import daylight_hours, days_since_last_frost, label_outdoor_action
 
-ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
+_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
+_CACHE_TTL_S = 20 * 60
+
+
+def _cache_key(lat: float, lon: float) -> str:
+    return f"{round(lat, 2)}:{round(lon, 2)}"
 
 
 async def _get_json(client: httpx.AsyncClient, url: str, params: dict) -> dict:
     import asyncio
 
+    last_status: int | None = None
     last_exc: Exception | None = None
-    for attempt in range(4):
+    for attempt in range(5):
         try:
             resp = await client.get(url, params=params)
+            last_status = resp.status_code
             if resp.status_code in (429, 503, 502):
-                await asyncio.sleep(2 ** attempt)
+                await asyncio.sleep(1.5 * (attempt + 1))
                 continue
             resp.raise_for_status()
             return resp.json()
         except httpx.HTTPError as exc:
             last_exc = exc
-            await asyncio.sleep(2 ** attempt)
-    raise last_exc or RuntimeError("Open-Meteo request failed")
+            await asyncio.sleep(1.5 * (attempt + 1))
+    if last_exc:
+        raise last_exc
+    raise RuntimeError(f"Open-Meteo unavailable (last status {last_status})")
 
 
 def _clamp_soil(value: float | None) -> float:
@@ -37,13 +47,30 @@ def _clamp_soil(value: float | None) -> float:
     return max(0.1, min(0.95, value))
 
 
-async def fetch_today_conditions(lat: float, lon: float) -> dict[str, Any]:
-    """Live conditions for a lat/lon using Open-Meteo forecast + recent archive."""
-    today = date.today()
-    frost_start = today - timedelta(days=120)
+def _estimate_frost_lag(min_temps: list[float], today_min: float) -> int:
+    if min_temps:
+        lag = days_since_last_frost(min_temps)[-1]
+        if lag <= 365:
+            return int(lag)
+    # Fallback when archive slice is thin
+    if today_min <= 0:
+        return 0
+    if today_min < 3:
+        return 3
+    return 45
 
-    async with httpx.AsyncClient(timeout=45.0) as client:
-        forecast = await _get_json(
+
+async def fetch_today_conditions(lat: float, lon: float) -> dict[str, Any]:
+    """Live conditions via one Open-Meteo forecast call (includes past_days for frost)."""
+    key = _cache_key(lat, lon)
+    cached = _CACHE.get(key)
+    if cached and (time.time() - cached[0]) < _CACHE_TTL_S:
+        return cached[1]
+
+    today = date.today()
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        payload = await _get_json(
             client,
             FORECAST_URL,
             {
@@ -51,7 +78,7 @@ async def fetch_today_conditions(lat: float, lon: float) -> dict[str, Any]:
                 "longitude": lon,
                 "timezone": "auto",
                 "forecast_days": 1,
-                "current": "temperature_2m,wind_speed_10m",
+                "past_days": 92,
                 "daily": (
                     "temperature_2m_max,temperature_2m_min,temperature_2m_mean,"
                     "precipitation_sum,wind_speed_10m_max"
@@ -59,41 +86,30 @@ async def fetch_today_conditions(lat: float, lon: float) -> dict[str, Any]:
                 "hourly": "soil_moisture_0_to_7cm",
             },
         )
-        archive = await _get_json(
-            client,
-            ARCHIVE_URL,
-            {
-                "latitude": lat,
-                "longitude": lon,
-                "start_date": frost_start.isoformat(),
-                "end_date": today.isoformat(),
-                "timezone": "auto",
-                "daily": "temperature_2m_min",
-            },
-        )
 
-    daily = forecast.get("daily", {})
-    avg_temp = float(daily["temperature_2m_mean"][0])
-    min_temp = float(daily["temperature_2m_min"][0])
-    precip = float(daily["precipitation_sum"][0] or 0.0)
-    wind = float(daily["wind_speed_10m_max"][0] or 0.0)
+    daily = payload.get("daily", {})
+    times = daily.get("time") or []
+    mins_series = [
+        float(x) for x in daily.get("temperature_2m_min", []) if x is not None
+    ]
 
-    hourly = forecast.get("hourly", {})
+    # Last day in series is today when past_days + forecast_days are included
+    today_idx = len(times) - 1 if times else 0
+    avg_temp = float(daily["temperature_2m_mean"][today_idx])
+    min_temp = float(daily["temperature_2m_min"][today_idx])
+    precip = float(daily["precipitation_sum"][today_idx] or 0.0)
+    wind = float(daily["wind_speed_10m_max"][today_idx] or 0.0)
+
+    hourly = payload.get("hourly", {})
     soil_vals = hourly.get("soil_moisture_0_to_7cm") or []
-    soil_raw = soil_vals[12] if len(soil_vals) > 12 else None
+    soil_raw = next((v for v in reversed(soil_vals) if v is not None), None)
     soil = _clamp_soil(float(soil_raw) if soil_raw is not None else None)
 
-    archive_mins = [
-        float(x) for x in archive.get("daily", {}).get("temperature_2m_min", []) if x is not None
-    ]
-    frost_lag = days_since_last_frost(archive_mins)[-1] if archive_mins else 30
-    if frost_lag > 365:
-        frost_lag = 90
-
+    frost_lag = _estimate_frost_lag(mins_series, min_temp)
     doy = today.timetuple().tm_yday
     daylight = daylight_hours(doy, lat)
 
-    return {
+    result = {
         "lat": lat,
         "lon": lon,
         "avg_temp_c": round(avg_temp, 2),
@@ -104,7 +120,7 @@ async def fetch_today_conditions(lat: float, lon: float) -> dict[str, Any]:
         "days_since_last_frost": int(frost_lag),
         "day_of_year": doy,
         "daylight_h": round(daylight, 2),
-        "source": "Open-Meteo (ERA5 reanalysis + forecast)",
+        "source": "Open-Meteo forecast + 92-day frost window",
         "location_label": None,
         "suggested_action": label_outdoor_action(
             avg_temp_c=avg_temp,
@@ -116,3 +132,5 @@ async def fetch_today_conditions(lat: float, lon: float) -> dict[str, Any]:
             daylight_h=daylight,
         ),
     }
+    _CACHE[key] = (time.time(), result)
+    return result
